@@ -3,10 +3,15 @@
 const int buttonTogglePin = 10; 
 const int buttonNextPin = 11;   
 const int pwmOutputPin = 9;     
+const int clkButtonPin = 5;
 
+int clkOutputPin = 6;
 bool is16BitMode = false;
 int currentBit = 0;
-int bits[8] = {0};       
+int bits[8] = {0};     
+
+int clk = 60;
+bool clkToggleState = false;
 bool buttonToggleState = false;
 bool lastButtonToggleState = false;
 bool buttonNextState = false;
@@ -15,8 +20,9 @@ bool lastButtonNextState = false;
 void setup() {
   pinMode(buttonTogglePin, INPUT_PULLUP);
   pinMode(buttonNextPin, INPUT_PULLUP);
+  pinMode(clkButtonPin, INPUT_PULLUP);
   pinMode(pwmOutputPin, OUTPUT);
-
+  pinMode(clkOutputPin,OUTPUT);
   Serial.begin(9600); // Initialize serial communication for console output
 
   resetBits();
@@ -26,12 +32,20 @@ void loop() {
   buttonToggleState = digitalRead(buttonTogglePin);
   buttonNextState = digitalRead(buttonNextPin);
 
+  //clkToggleState = digitalRead(clkButtonPin);
+  
+  
   // Toggle mode between 8-bit and 16-bit when both buttons are pressed
   if (buttonToggleState == LOW && buttonNextState == LOW) {
     is16BitMode = !is16BitMode; 
     resetBits();
     delay(500); 
   }
+
+  // if(clkToggleState == LOW){
+  //   clk = (clk == 60) ? 25:60;
+  //   delay(10);
+  // }
 
   if (buttonToggleState == LOW && lastButtonToggleState == HIGH) {
     bits[currentBit] = !bits[currentBit];
@@ -73,11 +87,17 @@ void updateDisplay() {
 void startTransmission(int maxBits) {
   Serial.println("Streaming data...");
 
+  int clkData = 1;
+
   while (true) { // Infinite loop for continuous streaming
     for (int i = 0; i < maxBits; i++) {
+      digitalWrite(clkOutputPin, clkData);
+      clkData = (clkData == 1)?0:1;
       digitalWrite(pwmOutputPin, bits[i]);  // Output bit (1 or 0)
-      delay(100); // Adjust for timing control
+      delayMicroseconds(clk*2); // Adjust for timing control
     }
+
+    
 
     // Check if user wants to reset (hold both buttons to stop)
     if (digitalRead(buttonTogglePin) == LOW && digitalRead(buttonNextPin) == LOW) {
